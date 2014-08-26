@@ -62,20 +62,16 @@ class Watermark {
     public static function output($input, $output = null, $options = null) {
         // Set default options
         static $defOptions = array(
-    'watermark' => '',
-    'halign' => self::ALIGN_CENTER,
-    'valign' => self::ALIGN_MIDDLE,
-    'hshift' => 0,
-    'vshift' => 0,
-    'type' => IMAGETYPE_JPEG,
-    'jpeg-quality' => 90,
+            'watermark' => '',
+            'halign' => self::ALIGN_CENTER,
+            'valign' => self::ALIGN_MIDDLE,
+            'hshift' => 0,
+            'vshift' => 0,
+            'type' => IMAGETYPE_JPEG,
+            'jpeg-quality' => 90,
         );
 
-        foreach ($defOptions as $k => $v) {
-            if (!isset($options[$k])) {
-                $options[$k] = $v;
-            }
-        }
+        $options = self::_setOptions($defOptions, $options);
 
         // Load source file and render image
         $renderImage = self::_render($input, $options);
@@ -126,6 +122,76 @@ class Watermark {
 
         return true;
     }
+    
+    public static function createFromText($text, $outfile, array $options)
+    {
+        $defaults = array(
+            'font_size' => 16,
+            'color' => '#ccc',
+            'font' => realpath(__DIR__ . '/../font/FreeSerifBoldItalic.ttf')
+        );
+        
+        $options = self::_setOptions($defaults, $options);
+
+        $textDim = imagettfbbox($options['font_size'], 0, $options['font'], $text);
+        $textX = $textDim[2] - $textDim[0];
+        $textY = $textDim[7] - $textDim[1];
+        
+        $width = abs($textX*1.2);
+        $height = abs($textY*2);
+       
+        $img = imagecreatetruecolor($width, $height);
+
+        $imageX = imagesx($img);
+        $imageY = imagesy($img);
+
+        imagealphablending($img, false);
+        imagesavealpha($img, true);
+
+        $transparent = imagecolorallocatealpha($img, 255,255,255, 127);
+        
+        $rgb = self::hex2rgb($options['color']);
+        $textColor = imagecolorallocate($img, $rgb[0],$rgb[1],$rgb[2]);
+        
+        imagefilledrectangle($img, 0, 0, $imageX, $imageY, $transparent);
+
+        $text_posX = ($imageX / 2) - ($textX / 2);
+        $text_posY = ($imageY / 2) - ($textY / 2);
+
+        imagealphablending($img, true);
+        imagettftext($img, $options['font_size'], 0, $text_posX, $text_posY, $textColor, $options['font'], $text);
+
+        return imagepng($img, $outfile);
+    }
+    
+    private static function hex2rgb($hex) {
+        $hex = str_replace("#", "", $hex);
+
+        if(strlen($hex) == 3) {
+           $r = hexdec(substr($hex,0,1).substr($hex,0,1));
+           $g = hexdec(substr($hex,1,1).substr($hex,1,1));
+           $b = hexdec(substr($hex,2,1).substr($hex,2,1));
+        } else {
+           $r = hexdec(substr($hex,0,2));
+           $g = hexdec(substr($hex,2,2));
+           $b = hexdec(substr($hex,4,2));
+        }
+        $rgb = array($r, $g, $b);
+        //return implode(",", $rgb); // returns the rgb values separated by commas
+        return $rgb; // returns an array with the rgb values
+     }
+     
+    private static function _setOptions($defOptions, $options) 
+    {
+        foreach ($defOptions as $k => $v) 
+        {
+            if (!isset($options[$k])) {
+                $options[$k] = $v;
+            }
+        }
+        
+        return $options;
+     }
 
     /**
      * Draw watermark to resource.

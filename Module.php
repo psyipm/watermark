@@ -54,4 +54,9 @@ class Module
         }
         return $img;
     }
+    
+    public function createFromText($text, $outfile, array $options)
+    {
+        return \WaterMark::createFromText($text, $outfile, $options);
+    }
 }
